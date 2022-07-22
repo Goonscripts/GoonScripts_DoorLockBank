@@ -1,5 +1,11 @@
 Config = {}
+GoonScripts = {}
 Config.Locale = 'en'
+
+GoonScripts.MinAmount 	= 1
+GoonScripts.CivieItem	= 'ziptiesbank'
+GoonScripts.PoliceItem	= 'boltcutters'
+GoonScripts.Job			= 'police'
 
 Config.DoorList = {
 

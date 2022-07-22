@@ -22,11 +22,6 @@ AddEventHandler('esx_doorlockbank:updateState', function(doorID, state)
 		return
 	end
 
-	if not IsAuthorized(xPlayer.job.name, Config.DoorList[doorID]) then
-		print(('esx_doorlockbank: %s was not authorized to open a locked door!'):format(xPlayer.identifier))
-		return
-	end
-
 	doorInfo[doorID] = state
 
 	TriggerClientEvent('esx_doorlockbank:setState', -1, doorID, state)
@@ -36,12 +31,44 @@ ESX.RegisterServerCallback('esx_doorlockbank:getDoorInfo', function(source, cb)
 	cb(doorInfo)
 end)
 
-function IsAuthorized(jobName, doorID)
-	for _,job in pairs(doorID.authorizedJobs) do
-		if job == jobName then
-			return true
-		end
-	end
+ESX.RegisterServerCallback('GoonScripts_DoorLockBank:DoYouHaveItemCivie', function(source, cb)
+	local xPlayer		= ESX.GetPlayerFromId(source)
+	local identifier	= xPlayer.getIdentifier()
+	local minamount		= GoonScripts.MinAmount
+	local item 			= GoonScripts.CivieItem
+	local getitem 		= xPlayer.getInventoryItem(item).count
 
-	return false
-end
+	if getitem >= minamount then
+		cb(true)
+	else
+		cb(false)
+	end
+end)
+
+ESX.RegisterServerCallback('GoonScripts_DoorLockBank:DoYouHaveItemPolice', function(source, cb)
+	local xPlayer		= ESX.GetPlayerFromId(source)
+	local identifier	= xPlayer.getIdentifier()
+	local minamount		= GoonScripts.MinAmount
+	local item 			= GoonScripts.PoliceItem
+	local getitem 		= xPlayer.getInventoryItem(item).count
+
+	if getitem >= minamount then
+		cb(true)
+	else
+		cb(false)
+	end
+end)
+
+RegisterServerEvent('GoonScripts_DoorLockBank:UsedAZiptieBank')
+AddEventHandler('GoonScripts_DoorLockBank:UsedAZiptieBank', function()
+	local xPlayer		= ESX.GetPlayerFromId(source)
+	local identifier	= xPlayer.getIdentifier()
+	local minamount		= GoonScripts.MinAmount
+	local item 			= GoonScripts.CivieItem
+	local getitem 		= xPlayer.getInventoryItem(item).count
+
+	if getitem >= minamount then
+		xPlayer.removeInventoryItem(item, minamount)
+		xPlayer.showNotification(_U('used_ziptie_bank'))
+	end
+end)

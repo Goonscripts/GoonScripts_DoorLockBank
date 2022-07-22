@@ -1,19 +1,14 @@
 ESX = nil
 
-local ShowText = false
-
+local ShowText 			= false
+local YesTiesIGot 		= false
+local YesCuttersIGot	= false
 
 Citizen.CreateThread(function()
 	while ESX == nil do
 		TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
 		Citizen.Wait(0)
 	end
-
-	while ESX.GetPlayerData().job == nil do
-		Citizen.Wait(10)
-	end
-
-	ESX.PlayerData = ESX.GetPlayerData()
 
 	-- Update the door list
 	ESX.TriggerServerCallback('esx_doorlockbank:getDoorInfo', function(doorInfo)
@@ -23,11 +18,38 @@ Citizen.CreateThread(function()
 	end)
 end)
 
-RegisterNetEvent('esx:setJob')
-AddEventHandler('esx:setJob', function(job)
-	ESX.PlayerData.job = job
+RegisterNetEvent('esx:playerLoaded')
+AddEventHandler('esx:playerLoaded', function(xPlayer)
+  PlayerData = xPlayer   
 end)
 
+
+RegisterNetEvent('esx:setJob')
+AddEventHandler('esx:setJob', function(job)
+	PlayerData.job = job
+end)
+
+local jobyes            = GoonScripts.Job
+
+Citizen.CreateThread(function()
+    while true do
+        Wait(5000)
+            ESX.TriggerServerCallback('GoonScripts_DoorLockBank:DoYouHaveItemCivie', function(DoYouHaveZipTiesBank)
+                if DoYouHaveZipTiesBank then
+                    YesTiesIGot = true
+                else
+                    YesTiesIGot = false
+                end
+            end)
+	        ESX.TriggerServerCallback('GoonScripts_DoorLockBank:DoYouHaveItemPolice', function(DoYouHaveBoltCutter)
+	            if DoYouHaveBoltCutter then
+	                YesCuttersIGot = true
+	            else
+	                YesCuttersIGot = false
+	            end
+	        end)
+    end
+end)
 -- Get objects every second, instead of every frame
 Citizen.CreateThread(function()
 	while true do
@@ -63,7 +85,6 @@ Citizen.CreateThread(function()
 				distance = #(playerCoords - doorID.objCoords)
 			end
 
-			local isAuthorized = IsAuthorized(doorID)
 			local maxDistance, size, displayText = 1.25, 1, _U('unlocked')
 
 			if doorID.distance then
@@ -99,26 +120,25 @@ Citizen.CreateThread(function()
 					displayText = _U('locked')
 				end
 
-				if isAuthorized then
-					displayText = _U('press_button', displayText)
-				end
-
 				if ShowText == true then
-				ESX.Game.Utils.DrawText3D(doorID.textCoords, displayText, size)
-
-					if IsControlJustReleased(0, 38) then
-						if isAuthorized then
-							doorID.locked = not doorID.locked
-
-							TriggerServerEvent('esx_doorlockbank:updateState', k, doorID.locked) -- Broadcast new state of the door to everyone
+					ESX.Game.Utils.DrawText3D(doorID.textCoords, displayText, size)
+				end
+				if IsControlJustReleased(0, 38) then
+					if not doorID.locked then
+						if YesTiesIGot then
+							doorID.locked = true
+								TriggerServerEvent('esx_doorlockbank:updateState', k, doorID.locked)
+								TriggerServerEvent('GoonScripts_DoorLockBank:UsedAZiptieBank')
+						else
+							ESX.ShowNotification(_U('not_enough_ziptiesbank'))
 						end
-					end
-				else
-					if IsControlJustReleased(0, 38) then
-						if isAuthorized then
-							doorID.locked = not doorID.locked
-
-							TriggerServerEvent('esx_doorlockbank:updateState', k, doorID.locked) -- Broadcast new state of the door to everyone
+					else
+						if YesCuttersIGot then
+							doorID.locked = false
+								TriggerServerEvent('esx_doorlockbank:updateState', k, doorID.locked)
+								ESX.ShowNotification(_U('used_boltcutter'))
+						else
+							ESX.ShowNotification(_U('not_enough_boltcutters'))
 						end
 					end
 				end
@@ -130,20 +150,6 @@ Citizen.CreateThread(function()
 		end
 	end
 end)
-
-function IsAuthorized(doorID)
-	if ESX.PlayerData.job == nil then
-		return false
-	end
-
-	for _,job in pairs(doorID.authorizedJobs) do
-		if job == ESX.PlayerData.job.name then
-			return true
-		end
-	end
-
-	return false
-end
 
 -- Set state for a door
 RegisterNetEvent('esx_doorlockbank:setState')
